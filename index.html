@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>mmd</title><!-- 
+    <script src="./babylonjs/8.16.0/babylon.js"></script>
+    <script src="./babylonjs/8.16.0/gui/babylon.gui.min.js"></script>
+    <script src="./babylonjs/8.16.0/loaders/babylonjs.loaders.min.js"></script> -->
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <!-- <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script> -->
+    <!-- <script src="https://cdn.babylonjs.com/havok/HavokPhysics.wasm"></script> -->
+    <script src="https://www.unpkg.com/babylon-mmd/umd/babylon.mmd.min.js"></script>
+    <!-- <script src="https://www.unpkg.com/babylon-mmd@0.68.0/umd/babylon.mmd.min.js"></script> -->
+    <!-- <script src="./babylonjs/HavokPhysics_umd.js"></script> -->
+    <!-- <script src="./babylonjs/0.68.0/babylon.mmd.min.js"></script> -->
+    <style>
+    html, body { width: 100%; height: 100%; padding: 0; margin: 0; overflow: hidden; }
+    </style>
+
+  </head>
+  <body>
+    <canvas id="renderCanvas" width="800" height ="600"></canvas>
+    <script>
+
+async function CreateScene(engine, canvas) {
+    BABYLONMMD.SdefInjector.OverrideEngineCreateEffect(engine);
+
+    const scene = new BABYLON.Scene(engine);
+    scene.clearColor = new BABYLON.Color4(0.95, 0.95, 0.95, 1.0);
+
+    const mmdCamera = new BABYLONMMD.MmdCamera("MmdCamera", new BABYLON.Vector3(0, 10, 0), scene);
+    mmdCamera.maxZ = 5000;
+
+    const camera = new BABYLON.ArcRotateCamera("ArcRotateCamera", 0, 0, 45, new BABYLON.Vector3(0, 10, 0), scene);
+    camera.maxZ = 5000;
+    camera.setPosition(new BABYLON.Vector3(0, 10, -45));
+    camera.attachControl(canvas, false);
+    camera.inertia = 0.8;
+    camera.speed = 10;
+
+    const hemisphericLight = new BABYLON.HemisphericLight("HemisphericLight", new BABYLON.Vector3(0, 1, 0), scene);
+    hemisphericLight.intensity = 0.3;
+    hemisphericLight.specular = new BABYLON.Color3(0, 0, 0);
+    hemisphericLight.groundColor = new BABYLON.Color3(1, 1, 1);
+
+    const directionalLight = new BABYLON.DirectionalLight("DirectionalLight", new BABYLON.Vector3(0.5, -1, 1), scene);
+    directionalLight.intensity = 0.7;
+    directionalLight.autoCalcShadowZBounds = false;
+    directionalLight.autoUpdateExtends = false;
+    directionalLight.shadowMaxZ = 20;
+    directionalLight.shadowMinZ = -15;
+    directionalLight.orthoTop = 18;
+    directionalLight.orthoBottom = -1;
+    directionalLight.orthoLeft = -10;
+    directionalLight.orthoRight = 10;
+    directionalLight.shadowOrthoScale = 0;
+
+    const mmdRuntime = new BABYLONMMD.MmdRuntime(scene);
+    mmdRuntime.register(scene);
+
+    const promises = [];
+    
+    promises.push(BABYLON.SceneLoader.ImportMeshAsync(
+        undefined,
+        "./minecraft/Alex_1.8.pmx",
+        // "./minecraft/Steve_1.8.pmx",
+        // "./minecraft/Alex.pmx",
+        // "./minecraft/Steve.pmx",
+        // "./minecraft/Steve_old.pmx",
+        undefined,
+        scene,
+        undefined
+    ));
+
+    const loadResults = await Promise.all(promises);
+    
+    mmdRuntime.setCamera(mmdCamera);
+
+    const modelMesh = loadResults[0].meshes[0]
+    const mmdModel = mmdRuntime.createMmdModel(modelMesh);
+
+    const ground = BABYLON.MeshBuilder.CreateGround("Ground", { width: 100, height: 100, subdivisions: 2, updatable: false }, scene);
+    ground.receiveShadows = true;
+    const groundMaterial = ground.material = new BABYLON.StandardMaterial("GroundMaterial", scene);
+    groundMaterial.diffuseColor = new BABYLON.Color3(0.7, 0.7, 0.7);
+    groundMaterial.specularPower = 128;
+    const groundReflectionTexture = groundMaterial.reflectionTexture = new BABYLON.MirrorTexture("MirrorTexture", 1024, scene, true);
+    groundReflectionTexture.mirrorPlane = BABYLON.Plane.FromPositionAndNormal(ground.position, ground.getFacetNormal(0).scale(-1));
+    groundReflectionTexture.renderList = [...modelMesh.metadata.meshes];
+    groundReflectionTexture.level = 0.45;
+    
+    return scene;
+}
+
+async function init() {
+    let canvas = document.getElementById('renderCanvas')
+    canvas.height = window.innerHeight 
+    canvas.width = window.innerWidth
+    let engine = new BABYLON.Engine(canvas, true, {preserveDrawingBuffer: true, stencil: true})
+
+    scene = await CreateScene(engine, canvas)
+
+    engine.runRenderLoop(function(){
+      scene.render()
+    });
+}
+
+init()
+
+
+    </script>
+  </body>
+</html>
